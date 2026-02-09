@@ -1,20 +1,17 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
-  const [msg, setMsg] = useState("");
-
-  useEffect(() => {
-    axios.get("http://127.0.0.1:5000/api/test")
-      .then(res => setMsg(res.data.message))
-      .catch(err => console.log(err));
-  }, []);
-
   return (
-    <div style={{ padding: 40 }}>
-      <h1>Mental Health AI</h1>
-      <h2>{msg}</h2>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
