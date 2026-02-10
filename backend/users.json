@@ -2,5 +2,17 @@
   {
     "username": "surya",
     "password": "$2b$12$.V.LKpi3TLZq6wT414owXuHZ50P/nmoEIhW7fcO.NbP43irHk/aEu"
+  },
+  {
+    "username": "testuser",
+    "password": "$2b$12$qAum2AxgTWbxv5qTyfe2he8iJOBtjDZoNAEwYSMf0ppf1IdcNKWOO"
+  },
+  {
+    "username": "testUser",
+    "password": "$2b$12$jkp4uwyYrX6A.Qq4STE63ebs.H.jd7BahqXHz27p0llMEUQt6hcLa"
+  },
+  {
+    "username": "surya@gmail.com",
+    "password": "$2b$12$7.g3AM7WbChBdB8hz0O4P.150.FwFMSUBcsy9QZaCPPPhgIPp/cWu"
   }
 ]

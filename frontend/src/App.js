@@ -3,7 +3,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -14,5 +14,3 @@ function App() {
     </BrowserRouter>
   );
 }
-
-export default App;

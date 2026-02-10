@@ -4,6 +4,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 import bcrypt
 import json
 import os
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -13,6 +14,8 @@ jwt = JWTManager(app)
 
 USER_DB = "users.json"
 
+
+# ---------- DB ----------
 
 def load_users():
     if not os.path.exists(USER_DB):
@@ -26,20 +29,35 @@ def save_users(users):
         json.dump(users, f, indent=2)
 
 
-@app.route("/")
-def home():
-    return "Backend Running"
+# ---------- VALIDATION ----------
+
+def is_email(value):
+    return re.match(r"[^@]+@[^@]+\.[^@]+", value)
 
 
-# REGISTER
+def is_phone(value):
+    return re.match(r"^[0-9]{10}$", value)
+
+
+# ---------- REGISTER ----------
+
 @app.route("/api/register", methods=["POST"])
 def register():
     data = request.json
+
     username = data.get("username")
     password = data.get("password")
 
+    if not username or not password:
+        return jsonify({"msg": "Email or Phone and password required"}), 400
+
+    # Validate email or phone
+    if not is_email(username) and not is_phone(username):
+        return jsonify({"msg": "Enter valid Email or 10-digit Phone"}), 400
+
     users = load_users()
 
+    # Prevent duplicate email/phone
     for u in users:
         if u["username"] == username:
             return jsonify({"msg": "User already exists"}), 400
@@ -56,10 +74,12 @@ def register():
     return jsonify({"msg": "User registered successfully"})
 
 
-# LOGIN
+# ---------- LOGIN ----------
+
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.json
+
     username = data.get("username")
     password = data.get("password")
 
@@ -71,15 +91,16 @@ def login():
                 token = create_access_token(identity=username)
                 return jsonify({"token": token})
 
-    return jsonify({"msg": "Invalid credentials"}), 401
+    return jsonify({"msg": "Invalid email/phone or password"}), 401
 
 
-# PROTECTED
+# ---------- PROTECTED ----------
+
 @app.route("/api/protected")
 @jwt_required()
 def protected():
     user = get_jwt_identity()
-    return jsonify({"msg": f"Welcome {user}, secure access granted"})
+    return jsonify({"msg": f"Welcome {user}"})
 
 
 if __name__ == "__main__":
