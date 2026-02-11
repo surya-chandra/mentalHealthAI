@@ -4,3 +4,5 @@ __pycache__/
 .env
 build/
 dist/
+backend/journal.json
+backend/users.json
