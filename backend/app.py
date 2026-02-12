@@ -121,6 +121,31 @@ def protected():
     user = get_jwt_identity()
     return jsonify({"msg": f"Welcome {user}"})
 
+# ---------------- SIMPLE MOOD DETECTOR ----------------
+def detect_mood_from_text(text):
+    text = text.lower()
+
+    low_words = [
+        "tired", "sad", "depressed", "no energy", "hopeless",
+        "wasted", "unmotivated", "stressed", "anxious", "bad day",
+        "lonely", "overthinking", "panic", "fear"
+    ]
+
+    good_words = [
+        "productive", "happy", "focused", "completed",
+        "great", "good day", "progress", "consistent",
+        "motivated", "improving", "better", "calm"
+    ]
+
+    low_score = sum(word in text for word in low_words)
+    good_score = sum(word in text for word in good_words)
+
+    if low_score > good_score:
+        return "low"
+    elif good_score > low_score:
+        return "good"
+    else:
+        return "neutral"
 
 # ---------------- SAVE JOURNAL ENTRY ----------------
 
@@ -137,7 +162,12 @@ def save_entry():
     entries = load_journal()
     today = datetime.now().strftime("%Y-%m-%d")
 	
-    mood = data.get("mood", "neutral") 
+    user_selected_mood = data.get("mood")
+
+    auto_mood = detect_mood_from_text(text)
+
+    mood = user_selected_mood if user_selected_mood else auto_mood
+
 
     entries.append({
         "user": user,
@@ -149,6 +179,25 @@ def save_entry():
     save_journal(entries)
 
     return jsonify({"msg": "Entry saved"})
+
+# DELETE ENTRY
+@app.route("/api/journal/<int:index>", methods=["DELETE"])
+@jwt_required()
+def delete_entry(index):
+    user = get_jwt_identity()
+    entries = load_journal()
+
+    user_entries = [e for e in entries if e["user"] == user]
+
+    if index < 0 or index >= len(user_entries):
+        return jsonify({"msg": "Invalid index"}), 400
+
+    entry_to_delete = user_entries[index]
+    entries.remove(entry_to_delete)
+    save_journal(entries)
+
+    return jsonify({"msg": "Entry deleted"})
+
 
 
 # ---------------- GET USER JOURNAL ----------------

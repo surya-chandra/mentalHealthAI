@@ -1,3 +1,5 @@
+/* ================= ROOT ================= */
+
 .auth-root {
   height: 100vh;
   display: flex;
@@ -8,8 +10,8 @@
   position: relative;
 }
 
+/* ================= GLASS CARD ================= */
 
-/* Glass Card */
 .glass-card {
   width: 430px;
   padding: 38px;
@@ -24,7 +26,8 @@
   position: relative;
 }
 
-/* Input */
+/* ================= INPUT FIELD ================= */
+
 .field {
   position: relative;
   margin-top: 16px;
@@ -32,24 +35,54 @@
 
 .field input {
   width: 100%;
-  padding: 14px;
+  padding: 15px 16px;
   border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.05);
-  color: white;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(20, 28, 50, 0.55);
+  color: #ffffff;
   outline: none;
-  transition: 0.25s;
-  box-shadow: inset 0 0 8px rgba(0,200,255,0.08);
+  transition: 0.25s ease;
+  backdrop-filter: blur(8px);
 }
 
+/* Placeholder */
+.field input::placeholder {
+  color: rgba(255,255,255,0.45);
+}
+
+/* Glow when typing */
 .field input:focus {
   border-color: rgba(0,200,255,0.9);
   box-shadow:
-    0 0 18px rgba(0,200,255,0.45),
-    inset 0 0 12px rgba(0,200,255,0.15);
+    0 0 16px rgba(0,200,255,0.45),
+    inset 0 0 10px rgba(0,200,255,0.15);
 }
 
-/* Button */
+/* ================= TEXTAREA ================= */
+
+.journal-textarea {
+  width: 100%;
+  height: 140px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(20, 28, 50, 0.55);
+  color: #fff;
+  outline: none;
+  resize: none;
+  transition: 0.25s ease;
+}
+
+.journal-textarea:focus {
+  border-color: rgba(0,200,255,0.9);
+  box-shadow:
+    0 0 14px rgba(0,200,255,0.45),
+    inset 0 0 8px rgba(0,200,255,0.15);
+}
+
+/* ================= BUTTON ================= */
+
 .glass-btn {
   width: 100%;
   margin-top: 20px;
@@ -59,14 +92,15 @@
   background: linear-gradient(135deg, #00c6ff, #0072ff, #00c6ff);
   background-size: 200% 200%;
   animation: gradientMove 3s infinite;
-  color: white;
-  font-weight: 500;
+  color: #ffffff;
+  font-weight: 600;
   cursor: pointer;
   box-shadow: 0 0 20px rgba(0,200,255,0.25);
+  transition: 0.2s ease;
 }
 
 .glass-btn:hover {
-  box-shadow: 0 0 30px rgba(0,200,255,0.5);
+  box-shadow: 0 0 32px rgba(0,200,255,0.55);
   transform: translateY(-1px);
 }
 
@@ -76,10 +110,67 @@
   100% { background-position: 0% 50%; }
 }
 
-/* Link */
+/* ================= LINK ================= */
+
 .glass-link {
   margin-top: 14px;
   font-size: 13px;
   opacity: 0.75;
   cursor: pointer;
 }
+
+/* ================= MOOD BUTTON ================= */
+
+.mood-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.mood-btn:hover {
+  box-shadow: 0 0 12px rgba(0,200,255,0.3);
+}
+
+/* ACTIVE STATES */
+
+.mood-active-good {
+  border: 1px solid #00ffa6;
+  box-shadow:
+    0 0 18px rgba(0,255,166,0.65),
+    inset 0 0 10px rgba(0,255,166,0.25);
+}
+
+.mood-active-neutral {
+  border: 1px solid #00c8ff;
+  box-shadow:
+    0 0 18px rgba(0,200,255,0.65),
+    inset 0 0 10px rgba(0,200,255,0.25);
+}
+
+.mood-active-low {
+  border: 1px solid #ff5a5a;
+  box-shadow:
+    0 0 18px rgba(255,90,90,0.65),
+    inset 0 0 10px rgba(255,90,90,0.25);
+}
+
+/* ================= SMALL POLISH ================= */
+
+.glass-card h2 {
+  margin-bottom: 14px;
+}
+
+.glass-card textarea {
+  background: rgba(255,255,255,0.06);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+::placeholder {
+  color: rgba(255,255,255,0.65);
+  opacity: 1;
+}
+

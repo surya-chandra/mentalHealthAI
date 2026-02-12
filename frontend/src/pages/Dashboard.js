@@ -1,9 +1,17 @@
+import Topbar from "../components/Topbar";
 import { useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer
+} from "recharts";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 import ParticlesBg from "../components/ParticlesBg";
-import Sidebar from "../components/Sidebar";
 import GlassCard from "../components/GlassCard";
 import bg from "../assets/bg.jpg";
 import "./auth-premium.css";
@@ -16,27 +24,18 @@ export default function Dashboard() {
   const [entries, setEntries] = useState([]);
   const [streak, setStreak] = useState(0);
 
+  const navigate = useNavigate();
+
   const moodToValue = {
     good: 3,
     neutral: 2,
     low: 1
   };
 
-  // 👇 MOVED OUTSIDE JSX (NO OTHER CHANGE)
-  console.log("Entries:", entries);
+  const token = localStorage.getItem("token");
 
-  const chartData = entries
-    .filter(e => e.date)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map(e => ({
-      date: e.date.slice(5),
-      mood: moodToValue[e.mood] || 2
-    }));
-
-  const navigate = useNavigate();
-
+  // ---------------- LOAD DATA ----------------
   useEffect(() => {
-    const token = localStorage.getItem("token");
     if (!token) return navigate("/");
 
     API.get("/protected", {
@@ -45,216 +44,305 @@ export default function Dashboard() {
       .then(res => setMessage(res.data.msg))
       .catch(() => navigate("/"));
 
+    loadEntries();
+    loadStreak();
+  }, []);
+
+  const loadEntries = () => {
     API.get("/journal", {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => setEntries(res.data))
       .catch(() => {});
+  };
 
+  const loadStreak = () => {
     API.get("/streak", {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => setStreak(res.data.streak))
       .catch(() => {});
-  }, [navigate]);
+  };
 
+  // ---------------- LOGOUT ----------------
   const logout = () => {
     localStorage.removeItem("token");
     navigate("/");
   };
 
+  // ---------------- SAVE ENTRY ----------------
   const saveEntry = () => {
-    if (!journal.trim()) return alert("Write something first");
+    if (!journal.trim()) return;
 
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      alert("Session expired, please login again");
-      return navigate("/");
-    }
-
-    API.post("/journal",
+    API.post(
+      "/journal",
       { text: journal, mood: mood },
       { headers: { Authorization: `Bearer ${token}` } }
     )
-    .then(() => {
-      setJournal("");
-      setMood("neutral");
-
-      API.get("/journal")
-        .then(res => {
-          console.log("Loaded entries:", res.data);
-          setEntries(res.data);
-        })
-        .catch(err => console.log("Journal load error", err));
-
-      API.get("/streak", {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => setStreak(res.data.streak));
-    })
-    .catch(() => alert("Failed to save"));
+      .then(() => {
+        setJournal("");
+        setMood("neutral");
+        loadEntries();
+        loadStreak();
+      })
+      .catch(() => alert("Save failed"));
   };
 
-  // ---------- Emotional Insight ----------
+  // ---------------- DELETE ENTRY ----------------
+  const deleteEntry = index => {
+    API.delete(`/journal/${index}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(() => loadEntries())
+      .catch(() => alert("Delete failed"));
+  };
+
+  // ---------------- CHART DATA ----------------
+  const chartData = entries
+    .filter(e => e.date)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .map(e => ({
+      date: e.date.slice(5),
+      mood: moodToValue[e.mood] || 2
+    }));
+
+  // ---------------- INSIGHT ----------------
   const latestMood = entries.length
     ? entries[entries.length - 1].mood
     : "neutral";
 
-  let insightMessage = "You’re doing fine. Keep small progress going.";
+  let insightMessage = "Keep going — small progress daily builds momentum.";
 
-  if (latestMood === "low") {
+  if (latestMood === "low")
     insightMessage =
-      "You seem mentally tired. Try taking a small step today — even 10 minutes counts.";
-  } else if (latestMood === "neutral") {
+      "You seem tired. Take a breath, do one small task today.";
+  if (latestMood === "neutral")
     insightMessage =
-      "You're stable. Consistency over perfection will move you forward.";
-  } else if (latestMood === "good") {
+      "You’re stable. Consistency over perfection wins.";
+  if (latestMood === "good")
     insightMessage =
-      "Great energy today. Use this momentum to do something meaningful.";
-  }
+      "Great energy. Use it for meaningful progress.";
 
   const consistencyScore = Math.min(100, streak * 10);
 
   return (
     <div className="auth-wrapper">
-
-      <div className="auth-bg" style={{ backgroundImage: `url(${bg})` }} />
+      <div
+        className="auth-bg"
+        style={{ backgroundImage: `url(${bg})` }}
+      />
       <div className="auth-overlay" />
       <ParticlesBg />
 
-      <div style={{ display: "flex", width: "100%", zIndex: 2 }}>
+      {/* NAVBAR */}
+      <Topbar setView={setView} logout={logout} />
 
-        <Sidebar setView={setView} logout={logout} />
-
-        <div style={{ flex: 1, padding: 30 }}>
-
-          {/* HOME */}
-          {view === "home" && (
-            <div style={{ display: "grid", gap: 20 }}>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-
-                <GlassCard>
-                  <h3>🔥 Consistency</h3>
-                  <p style={{ fontSize: 28 }}>{streak} Days</p>
-                  <small>Small steps daily → Big change</small>
-                </GlassCard>
-
-                <GlassCard>
-                  <h3>📊 Score</h3>
-                  <p style={{ fontSize: 28 }}>{consistencyScore}%</p>
-                  <small>Your discipline level</small>
-                </GlassCard>
-
-                <GlassCard>
-                  <h3>📓 Journals</h3>
-                  <p style={{ fontSize: 28 }}>{entries.length}</p>
-                  <small>Reflection builds awareness</small>
-                </GlassCard>
-
-              </div>
-
+      {/* MAIN */}
+      <div style={{ padding: "80px 30px" }}>
+        {/* HOME */}
+        {view === "home" && (
+          <div style={{ display: "grid", gap: 20 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: 20
+              }}
+            >
               <GlassCard>
-                <h3>🧠 Insight</h3>
-                <p style={{ fontSize: 16, lineHeight: 1.6 }}>
-                  {insightMessage}
-                </p>
+                <h3>🔥 Consistency</h3>
+                <p style={{ fontSize: 28 }}>{streak} Days</p>
               </GlassCard>
 
               <GlassCard>
-                <h3>🌱 Recovery</h3>
-                {latestMood === "low" ? (
-                  <p>You might be under stress. Slow down, breathe, and focus on one small task today.</p>
-                ) : latestMood === "neutral" ? (
-                  <p>You are stable. Build consistency — even small progress matters.</p>
-                ) : (
-                  <p>You are doing well. Maintain this rhythm and protect your energy.</p>
-                )}
+                <h3>📊 Score</h3>
+                <p style={{ fontSize: 28 }}>{consistencyScore}%</p>
               </GlassCard>
 
+              <GlassCard>
+                <h3>📓 Journals</h3>
+                <p style={{ fontSize: 28 }}>{entries.length}</p>
+              </GlassCard>
             </div>
-          )}
 
-          {/* JOURNAL */}
-          {view === "journal" && (
+            <GlassCard>
+              <h3>🧠 Insight</h3>
+              <p>{insightMessage}</p>
+            </GlassCard>
+          </div>
+        )}
+
+        {/* JOURNAL */}
+        {view === "journal" && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1.1fr 0.9fr",
+              gap: 20
+            }}
+          >
+            {/* WRITE */}
             <GlassCard>
               <h2>Daily Journal</h2>
 
-              <div style={{ marginBottom: 10 }}>
-                <b>Select Mood:</b>
+              <div style={{ marginTop: 8, display: "flex", gap: 10 }}>
 
-                <div style={{ marginTop: 5 }}>
-                  <button onClick={() => setMood("good")} className="glass-btn">🙂 Good</button>
-                  <button onClick={() => setMood("neutral")} className="glass-btn" style={{ marginLeft: 6 }}>😐 Neutral</button>
-                  <button onClick={() => setMood("low")} className="glass-btn" style={{ marginLeft: 6 }}>😔 Low</button>
-                </div>
-              </div>
+                          {/* GOOD */}
+                          <button
+                            onClick={() => setMood("good")}
+                            className="glass-btn"
+                            style={{
+                              padding: "10px 16px",
+                              borderRadius: 12,
+                              border: mood === "good" ? "1px solid #00ffa6" : "1px solid rgba(255,255,255,0.08)",
+                              background:
+                                mood === "good"
+                                  ? "linear-gradient(145deg, rgba(0,255,170,0.25), rgba(0,180,120,0.18))"
+                                  : "rgba(255,255,255,0.04)",
+                              boxShadow:
+                                mood === "good"
+                                  ? "0 0 12px rgba(0,255,170,0.45), inset 0 0 8px rgba(0,255,170,0.2)"
+                                  : "none",
+                              transform: mood === "good" ? "scale(1.05)" : "scale(1)",
+                              transition: "all 0.18s ease"
+                            }}
+                          >
+                            🙂 Good
+                          </button>
 
+
+                          {/* NEUTRAL */}
+                          <button
+                            onClick={() => setMood("neutral")}
+                            className="glass-btn"
+                            style={{
+                              padding: "10px 16px",
+                              borderRadius: 12,
+                              border: mood === "neutral" ? "1px solid #00c8ff" : "1px solid rgba(255,255,255,0.08)",
+                              background:
+                                mood === "neutral"
+                                  ? "linear-gradient(145deg, rgba(0,200,255,0.25), rgba(0,140,220,0.18))"
+                                  : "rgba(255,255,255,0.04)",
+                              boxShadow:
+                                mood === "neutral"
+                                  ? "0 0 12px rgba(0,200,255,0.45), inset 0 0 8px rgba(0,200,255,0.2)"
+                                  : "none",
+                              transform: mood === "neutral" ? "scale(1.05)" : "scale(1)",
+                              transition: "all 0.18s ease"
+                            }}
+                          >
+                            😐 Neutral
+                          </button>
+
+
+                          {/* LOW */}
+                          <button
+                            onClick={() => setMood("low")}
+                            className="glass-btn"
+                            style={{
+                              padding: "10px 16px",
+                              borderRadius: 12,
+                              border: mood === "low" ? "1px solid #ff5050" : "1px solid rgba(255,255,255,0.08)",
+                              background:
+                                mood === "low"
+                                  ? "linear-gradient(145deg, rgba(255,80,80,0.25), rgba(200,40,40,0.18))"
+                                  : "rgba(255,255,255,0.04)",
+                              boxShadow:
+                                mood === "low"
+                                  ? "0 0 12px rgba(255,80,80,0.45), inset 0 0 8px rgba(255,80,80,0.2)"
+                                  : "none",
+                              transform: mood === "low" ? "scale(1.05)" : "scale(1)",
+                              transition: "all 0.18s ease"
+                            }}
+                          >
+                            😔 Low
+                          </button>
+
+                      </div>
               <textarea
                 value={journal}
                 onChange={e => setJournal(e.target.value)}
                 placeholder="Write your thoughts..."
                 style={{
                   width: "100%",
-                  height: 120,
-                  marginTop: 10,
-                  borderRadius: 10,
-                  padding: 10,
+                  height: 140,
+                  marginTop: 16,   
+                  borderRadius: 12,
+                  padding: 12,
                   border: "none",
                   outline: "none"
-                }}
-              />
-
+                  }}
+                />
               <button
                 className="glass-btn"
-                style={{ marginTop: 10 }}
+                style={{ width: "100%", marginTop: 10 }}
                 onClick={saveEntry}
               >
                 Save Entry
               </button>
-
-              {/* 👇 ADDED ONLY THIS BLOCK (SHOW JOURNALS) */}
-              <div style={{ marginTop: 20 }}>
-                <h4>Saved Entries</h4>
-
-                {entries.length === 0 && <p>No entries yet</p>}
-
-                {entries.map((e, i) => (
-                  <p key={i} style={{ opacity: 0.85 }}>
-                    • {e.text} &nbsp;
-                    <small>({e.mood})</small>
-                  </p>
-                ))}
-              </div>
             </GlassCard>
-          )}
 
-          {/* MOOD */}
-          {view === "mood" && (
+            {/* SAVED */}
             <GlassCard>
-              <h2>Mood Trend</h2>
+              <h3>Saved Entries</h3>
 
-              {chartData.length === 0 ? (
-                <p>No mood data yet</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#555" />
-                    <XAxis dataKey="date" stroke="#ccc" />
-                    <YAxis domain={[1, 3]} ticks={[1, 2, 3]} stroke="#ccc" />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="mood" stroke="#00e5ff" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
+              {entries.map((e, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    borderBottom:
+                      "1px solid rgba(255,255,255,0.05)",
+                    padding: "8px 0"
+                  }}
+                >
+                  <span>
+                    {e.text} <small>({e.mood})</small>
+                  </span>
 
-              <div style={{ marginTop: 10, fontSize: 14, opacity: 0.8 }}>
-                1 = Low 😔 &nbsp;&nbsp; 2 = Neutral 😐 &nbsp;&nbsp; 3 = Good 🙂
-              </div>
+                  <span
+                    style={{ cursor: "pointer" }}
+                    onClick={() => deleteEntry(i)}
+                  >
+                    🗑
+                  </span>
+                </div>
+              ))}
             </GlassCard>
-          )}
+          </div>
+        )}
 
-        </div>
+        {/* MOOD */}
+        {view === "mood" && (
+          <GlassCard>
+            <h2>Mood Trend</h2>
+
+            {chartData.length === 0 ? (
+              <p>No data yet</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={chartData}>
+                  <CartesianGrid stroke="#444" />
+                  <XAxis dataKey="date" stroke="#aaa" />
+                  <YAxis
+                    domain={[1, 3]}
+                    ticks={[1, 2, 3]}
+                    stroke="#aaa"
+                  />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="mood"
+                    stroke="#00e5ff"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </GlassCard>
+        )}
       </div>
     </div>
   );
