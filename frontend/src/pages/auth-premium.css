@@ -174,3 +174,159 @@
   opacity: 1;
 }
 
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dashboard-grid {
+  display: grid;
+  gap: 24px;
+  max-width: 1200px;
+  margin: auto;
+}
+
+.section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+/* -------- SEARCH BAR -------- */
+.searchbar-wrapper {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.searchbar-input {
+  width: 60%;
+  max-width: 520px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: none;
+  outline: none;
+  background: rgba(255,255,255,0.05);
+  color: #e6edf3;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  font-size: 14px;
+}
+
+.searchbar-input::placeholder {
+  opacity: 0.6;
+}
+
+.searchbar-filter {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.05);
+  color: #e6edf3;
+}
+
+/* ---------- Journal Premium ---------- */
+
+.journal-utilities {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.journal-util-box {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+}
+
+.journal-mood {
+  margin: 12px 0;
+}
+
+.mood-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.mood-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.05);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.mood-btn.active {
+  background: rgba(0,229,255,0.2);
+  transform: scale(1.05);
+}
+
+.journal-textarea {
+  width: 100%;
+  height: 140px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  padding: 12px;
+  margin-top: 8px;
+  background: rgba(255,255,255,0.04);
+  color: #e6edf3;
+}
+
+.journal-save {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ---------- Timeline ---------- */
+
+.journal-timeline {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-entry {
+  display: grid;
+  grid-template-columns: 10px 1fr 30px;
+  gap: 10px;
+  align-items: start;
+}
+
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  background: #00e5ff;
+  border-radius: 50%;
+  margin-top: 8px;
+}
+
+.timeline-content {
+  background: rgba(255,255,255,0.04);
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.timeline-text {
+  margin-top: 4px;
+}
+
+.timeline-delete {
+  cursor: pointer;
+  opacity: 0.6;
+}

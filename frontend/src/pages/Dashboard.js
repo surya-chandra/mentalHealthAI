@@ -1,3 +1,8 @@
+import SearchFilterBar from "../components/SearchFilterBar";
+import AnalyticsWidget from "../components/AnalyticsWidget";
+import QuickActions from "../components/QuickActions";
+import Notifications from "../components/Notifications";
+import EditableEntry from "../components/EditableEntry";
 import Topbar from "../components/Topbar";
 import { useEffect, useState } from "react";
 import {
@@ -17,12 +22,22 @@ import bg from "../assets/bg.jpg";
 import "./auth-premium.css";
 
 export default function Dashboard() {
+  const [timeLeft, setTimeLeft] = useState(1500); // 25 min
+  const [running, setRunning] = useState(false);
+  const [goalDone, setGoalDone] = useState(false);
   const [mood, setMood] = useState("neutral");
   const [view, setView] = useState("home");
   const [message, setMessage] = useState("");
   const [journal, setJournal] = useState("");
   const [entries, setEntries] = useState([]);
   const [streak, setStreak] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+const [filterMood, setFilterMood] = useState("");
+const [notifications, setNotifications] = useState([
+  "Stay consistent today 💪",
+  "Write at least 1 journal entry",
+  "Your streak is growing 🔥"
+]);
 
   const navigate = useNavigate();
 
@@ -31,38 +46,60 @@ export default function Dashboard() {
     neutral: 2,
     low: 1
   };
+  const loadEntries = () => {
+  API.get("/journal", {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(res => setEntries(res.data))
+    .catch(() => {});
+};
+
+const loadStreak = () => {
+  API.get("/streak", {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(res => setStreak(res.data.streak))
+    .catch(() => {});
+};
+
 
   const token = localStorage.getItem("token");
 
   // ---------------- LOAD DATA ----------------
-  useEffect(() => {
-    if (!token) return navigate("/");
+useEffect(() => {
+  if (!token) return navigate("/");
 
-    API.get("/protected", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => setMessage(res.data.msg))
-      .catch(() => navigate("/"));
+  API.get("/protected", {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(res => setMessage(res.data.msg))
+    .catch(() => navigate("/"));
 
-    loadEntries();
-    loadStreak();
-  }, []);
+  // SAFE interval
+  const interval = setInterval(() => {
+    reloadData();
+  }, 15000);
 
-  const loadEntries = () => {
-    API.get("/journal", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => setEntries(res.data))
-      .catch(() => {});
-  };
+  return () => clearInterval(interval);
+}, []);
 
-  const loadStreak = () => {
-    API.get("/streak", {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => setStreak(res.data.streak))
-      .catch(() => {});
-  };
+useEffect(() => {
+  if (!running) return;
+
+  const t = setInterval(() => {
+    setTimeLeft(prev => {
+      if (prev <= 1) {
+        clearInterval(t);
+        setRunning(false);
+        return 1500;
+      }
+      return prev - 1;
+    });
+  }, 1000);
+
+  return () => clearInterval(t);
+}, [running]);
+
 
   // ---------------- LOGOUT ----------------
   const logout = () => {
@@ -70,60 +107,136 @@ export default function Dashboard() {
     navigate("/");
   };
 
+    // ---------- Reload Dashboard Data ----------
+const reloadData = () => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  API.get("/journal", {
+    headers: { Authorization: `Bearer ${token}` }
+  }).then(res => setEntries([...res.data]));
+
+  API.get("/streak", {
+    headers: { Authorization: `Bearer ${token}` }
+  }).then(res => setStreak(res.data.streak));
+};
+
+
   // ---------------- SAVE ENTRY ----------------
-  const saveEntry = () => {
-    if (!journal.trim()) return;
+const saveEntry = () => {
+  if (!journal.trim()) return;
 
-    API.post(
-      "/journal",
-      { text: journal, mood: mood },
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-      .then(() => {
-        setJournal("");
-        setMood("neutral");
-        loadEntries();
-        loadStreak();
-      })
-      .catch(() => alert("Save failed"));
-  };
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-  // ---------------- DELETE ENTRY ----------------
-  const deleteEntry = index => {
-    API.delete(`/journal/${index}`, {
-      headers: { Authorization: `Bearer ${token}` }
+  API.post(
+    "/journal",
+    { text: journal, mood: mood },
+    { headers: { Authorization: `Bearer ${token}` } }
+  )
+    .then(() => {
+      setJournal("");
+      setMood("neutral");
+      reloadData();
     })
-      .then(() => loadEntries())
-      .catch(() => alert("Delete failed"));
-  };
+    .catch(() => {});
+};
+
+
+// ---------------- DELETE ENTRY ----------------
+const deleteEntry = (index) => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  API.delete(`/journal/${index}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+    .then(() => {
+      reloadData();
+    })
+    .catch(() => {});
+};
 
   // ---------------- CHART DATA ----------------
-  const chartData = entries
-    .filter(e => e.date)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .map(e => ({
-      date: e.date.slice(5),
-      mood: moodToValue[e.mood] || 2
-    }));
+  // -------- Burnout Detection --------
+// ---------------- CHART DATA ----------------
+const chartData = entries
+  .filter(e => e.date)
+  .sort((a, b) => new Date(a.date) - new Date(b.date))
+  .map(e => ({
+    date: e.date.slice(5),
+    mood: moodToValue[e.mood] || 2
+  }));
+
+// -------- Burnout Detection --------
+const moodTrend = chartData.map(d => d.mood);
+let burnoutWarning = null;
+
+if (moodTrend.length >= 3) {
+  const last3 = moodTrend.slice(-3);
+  if (last3[2] < last3[1] && last3[1] < last3[0]) {
+    burnoutWarning =
+      "⚠ Your mood is declining for 3 days. Take rest, reset mind, avoid overload.";
+  }
+}
+
+
+    // ---------- Latest Mood ----------
+const latestMood = entries.length
+  ? entries[entries.length - 1].mood
+  : "neutral";
 
   // ---------------- INSIGHT ----------------
-  const latestMood = entries.length
-    ? entries[entries.length - 1].mood
-    : "neutral";
+  let insightMessage = "";
 
-  let insightMessage = "Keep going — small progress daily builds momentum.";
+  if (streak === 0) {
+    insightMessage = "Start small. One entry today can restart your discipline.";
+  }
+  else if (latestMood === "low" && streak < 3) {
+    insightMessage =
+      "You seem mentally tired and inconsistent. Don’t chase motivation — build small habits.";
+  }
+  else if (latestMood === "low") {
+    insightMessage =
+      "You are pushing through stress. Reduce pressure and focus on clarity, not speed.";
+  }
+  else if (latestMood === "neutral") {
+    insightMessage =
+      "You are stable. Consistency matters more than intensity right now.";
+  }
+  else if (latestMood === "good" && streak >= 5) {
+    insightMessage =
+      "Great rhythm. You’re building control over your mind — protect this streak.";
+  }
+  else {
+    insightMessage =
+      "You’re progressing. Small daily effort is reshaping your discipline.";
+  }
 
-  if (latestMood === "low")
-    insightMessage =
-      "You seem tired. Take a breath, do one small task today.";
-  if (latestMood === "neutral")
-    insightMessage =
-      "You’re stable. Consistency over perfection wins.";
-  if (latestMood === "good")
-    insightMessage =
-      "Great energy. Use it for meaningful progress.";
 
-  const consistencyScore = Math.min(100, streak * 10);
+  const consistencyScore = (() => {
+  if (entries.length === 0) return 0;
+
+  let score = 0;
+
+  // +40 for streak
+  score += Math.min(40, streak * 8);
+
+  // +30 for regular journaling
+  const last7 = entries.slice(-7);
+  score += Math.min(30, last7.length * 4);
+
+  // +30 based on mood stability
+  const moodMap = { good: 3, neutral: 2, low: 1 };
+  const avgMood =
+    last7.reduce((s, e) => s + (moodMap[e.mood] || 2), 0) /
+    (last7.length || 1);
+
+  score += avgMood * 10;
+
+  return Math.min(100, Math.round(score));
+})();
+
 
   return (
     <div className="auth-wrapper">
@@ -140,38 +253,81 @@ export default function Dashboard() {
       {/* MAIN */}
       <div style={{ padding: "80px 30px" }}>
         {/* HOME */}
-        {view === "home" && (
-          <div style={{ display: "grid", gap: 20 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: 20
-              }}
-            >
-              <GlassCard>
-                <h3>🔥 Consistency</h3>
-                <p style={{ fontSize: 28 }}>{streak} Days</p>
-              </GlassCard>
+            {view === "home" && (
+        <div style={{ display: "grid", gap: 20 }}>
+          {/* ===== INSERTED : SEARCH + FILTER ===== */}
+          <SearchFilterBar
+            onSearch={(q) => setSearchQuery(q)}
+            onFilter={(m) => setFilterMood(m)}
+          />
 
-              <GlassCard>
-                <h3>📊 Score</h3>
-                <p style={{ fontSize: 28 }}>{consistencyScore}%</p>
-              </GlassCard>
-
-              <GlassCard>
-                <h3>📓 Journals</h3>
-                <p style={{ fontSize: 28 }}>{entries.length}</p>
-              </GlassCard>
-            </div>
+          {/* ===== INSERTED : WIDGETS ROW ===== */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: 20
+            }}
+          >
+            <GlassCard>
+              <AnalyticsWidget entries={entries} streak={streak} />
+            </GlassCard>
 
             <GlassCard>
-              <h3>🧠 Insight</h3>
-              <p>{insightMessage}</p>
+              <QuickActions
+                onAdd={() => setView("journal")}
+                onRefresh={reloadData}
+              />
+            </GlassCard>
+
+            <GlassCard>
+              <Notifications items={notifications} />
             </GlassCard>
           </div>
-        )}
+          {/* ===== END INSERTED ===== */}
+
+
+          {/* ===== YOUR ORIGINAL CODE (UNCHANGED) ===== */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: 20
+            }}
+          >
+            <GlassCard>
+              {/* animation: "fadeUp 0.4s ease" */}
+              <h3>🔥 Consistency</h3>
+              <p style={{ fontSize: 28 }}>{streak} Days</p>
+            </GlassCard>
+
+            <GlassCard>
+              <h3>📊 Score</h3>
+              <p style={{ fontSize: 28 }}>{consistencyScore}%</p>
+            </GlassCard>
+
+            <GlassCard>
+              <h3>📓 Journals</h3>
+              <p style={{ fontSize: 28 }}>{entries.length}</p>
+            </GlassCard>
+          </div>
+
+          <GlassCard>
+            <h3>🧠 Insight</h3>
+            <p>{insightMessage}</p>
+          </GlassCard>
+          {burnoutWarning && (
+            <GlassCard>
+              <h3>⚠ Mood Alert</h3>
+              <p>{burnoutWarning}</p>
+            </GlassCard>
+          )}
+
+
+        </div>
+      )}
+
 
         {/* JOURNAL */}
         {view === "journal" && (
@@ -182,7 +338,38 @@ export default function Dashboard() {
               gap: 20
             }}
           >
+
+            <GlassCard>
+                <h3>⏱ Focus Session</h3>
+
+                <h2>
+                  {Math.floor(timeLeft / 60)}:
+                  {String(timeLeft % 60).padStart(2, "0")}
+                </h2>
+
+                <button
+                  className="glass-btn"
+                  onClick={() => setRunning(!running)}
+                >
+                  {running ? "Pause" : "Start Focus"}
+                </button>
+              </GlassCard>
+
             {/* WRITE */}
+
+
+             <GlassCard>
+            <h3>🎯 Daily Goal</h3>
+            <p>Complete your main task today</p>
+
+            <button
+              className="glass-btn"
+              onClick={() => setGoalDone(!goalDone)}
+            >
+              {goalDone ? "✅ Completed" : "Mark as Done"}
+            </button>
+          </GlassCard>
+
             <GlassCard>
               <h2>Daily Journal</h2>
 
@@ -285,31 +472,38 @@ export default function Dashboard() {
 
             {/* SAVED */}
             <GlassCard>
-              <h3>Saved Entries</h3>
+              <h3>📜 Journal Timeline</h3>
+                    <p className="label">Your emotional and mental journey</p>
 
-              {entries.map((e, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    borderBottom:
-                      "1px solid rgba(255,255,255,0.05)",
-                    padding: "8px 0"
-                  }}
-                >
-                  <span>
-                    {e.text} <small>({e.mood})</small>
-                  </span>
+                    <div className="journal-timeline">
+                      {entries.map((e, i) => (
+                        <div key={i} className="timeline-entry">
+                          <div className="timeline-dot" />
 
-                  <span
-                    style={{ cursor: "pointer" }}
-                    onClick={() => deleteEntry(i)}
-                  >
-                    🗑
-                  </span>
-                </div>
-              ))}
+                          <div className="timeline-content">
+                            <div className="timeline-header">
+                              <span className="timeline-mood">
+                                {e.mood === "good" ? "🙂" : e.mood === "neutral" ? "😐" : "😔"}
+                              </span>
+
+                              <span className="timeline-date">
+                                {e.date?.slice(0, 10) || "Today"}
+                              </span>
+                            </div>
+
+                            <p className="timeline-text">{e.text}</p>
+                          </div>
+
+                          <span
+                            className="timeline-delete"
+                            onClick={() => deleteEntry(i)}
+                          >
+                            🗑
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
             </GlassCard>
           </div>
         )}
