@@ -1,9 +1,11 @@
+import StreakHeatmap from "../components/StreakHeatmap";
 import SearchFilterBar from "../components/SearchFilterBar";
 import AnalyticsWidget from "../components/AnalyticsWidget";
 import QuickActions from "../components/QuickActions";
 import Notifications from "../components/Notifications";
 import EditableEntry from "../components/EditableEntry";
 import Topbar from "../components/Topbar";
+import MoodDistribution from "../components/MoodDistribution";
 import { useEffect, useState } from "react";
 import {
   LineChart,
@@ -33,11 +35,11 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
 const [filterMood, setFilterMood] = useState("");
-const [notifications, setNotifications] = useState([
+const notifications = [
   "Stay consistent today 💪",
   "Write at least 1 journal entry",
   "Your streak is growing 🔥"
-]);
+];
 
   const navigate = useNavigate();
 
@@ -478,8 +480,8 @@ const latestMood = entries.length
                     <div className="journal-timeline">
                       {entries.map((e, i) => (
                         <div key={i} className="timeline-entry">
+  
                           <div className="timeline-dot" />
-
                           <div className="timeline-content">
                             <div className="timeline-header">
                               <span className="timeline-mood">
@@ -505,39 +507,49 @@ const latestMood = entries.length
                     </div>
 
             </GlassCard>
+            <GlassCard>
+                <StreakHeatmap entries={entries} />
+            </GlassCard>
+
           </div>
         )}
 
         {/* MOOD */}
         {view === "mood" && (
-          <GlassCard>
-            <h2>Mood Trend</h2>
+          <div style={{ display: "grid", gap: 20 }}>
 
-            {chartData.length === 0 ? (
-              <p>No data yet</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={chartData}>
-                  <CartesianGrid stroke="#444" />
-                  <XAxis dataKey="date" stroke="#aaa" />
-                  <YAxis
-                    domain={[1, 3]}
-                    ticks={[1, 2, 3]}
-                    stroke="#aaa"
-                  />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="mood"
-                    stroke="#00e5ff"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </GlassCard>
+            {/* -------- Mood Trend Line Chart -------- */}
+            <GlassCard>
+              <h2>Mood Trend</h2>
+
+              {chartData.length === 0 ? (
+                <p>No data yet</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid stroke="#444" />
+                    <XAxis dataKey="date" stroke="#aaa" />
+                    <YAxis domain={[1, 3]} ticks={[1, 2, 3]} stroke="#aaa" />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="mood"
+                      stroke="#00e5ff"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </GlassCard>
+
+            {/* -------- Mood Distribution -------- */}
+            <GlassCard>
+              <MoodDistribution entries={entries} />
+            </GlassCard>
+
+          </div>
         )}
-      </div>
+        </div>
     </div>
   );
 }
