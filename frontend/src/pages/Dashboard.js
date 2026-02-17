@@ -34,12 +34,27 @@ export default function Dashboard() {
   const [entries, setEntries] = useState([]);
   const [streak, setStreak] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-const [filterMood, setFilterMood] = useState("");
-const notifications = [
-  "Stay consistent today 💪",
-  "Write at least 1 journal entry",
-  "Your streak is growing 🔥"
-];
+  const [filterMood, setFilterMood] = useState("");
+  const notifications = [
+    "Stay consistent today 💪",
+    "Write at least 1 journal entry",
+    "Your streak is growing 🔥"
+  ];
+  // -------- Writing Prompts --------
+  const prompts = [
+    "What drained your energy today?",
+    "What made you feel calm today?",
+    "What are you avoiding right now?",
+    "One small win from today?",
+    "What is bothering your mind lately?",
+    "What are you grateful for today?",
+    "What distracted you the most today?",
+    "What would make tomorrow better?",
+    "Write freely — what’s on your mind?",
+    "What is one thing you should focus on now?"
+  ];
+  const [currentPrompt, setCurrentPrompt] = useState("");
+
 
   const navigate = useNavigate();
 
@@ -84,6 +99,13 @@ useEffect(() => {
 
   return () => clearInterval(interval);
 }, []);
+useEffect(() => {
+  if (view === "journal") {
+    const random = prompts[Math.floor(Math.random() * prompts.length)];
+    setCurrentPrompt(random);
+  }
+}, [view]);
+
 
 useEffect(() => {
   if (!running) return;
@@ -142,6 +164,15 @@ const saveEntry = () => {
       reloadData();
     })
     .catch(() => {});
+};
+
+const insertPrompt = () => {
+  setJournal(prev => (prev ? prev + "\n\n" + currentPrompt : currentPrompt));
+};
+
+const refreshPrompt = () => {
+  const random = prompts[Math.floor(Math.random() * prompts.length)];
+  setCurrentPrompt(random);
 };
 
 
@@ -253,7 +284,7 @@ const latestMood = entries.length
       <Topbar setView={setView} logout={logout} />
 
       {/* MAIN */}
-      <div style={{ padding: "80px 30px" }}>
+      <div style={{ padding: "80px 30px", maxWidth: 1400, margin: "0 auto" }}>
         {/* HOME */}
             {view === "home" && (
         <div style={{ display: "grid", gap: 20 }}>
@@ -267,7 +298,7 @@ const latestMood = entries.length
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))",
               gap: 20
             }}
           >
@@ -336,11 +367,12 @@ const latestMood = entries.length
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1.1fr 0.9fr",
-              gap: 20
+              gridTemplateColumns: "repeat(3, minmax(340px, 1fr))",
+              gap: 20,
+              alignItems: "start"
             }}
           >
-
+            {false&& (
             <GlassCard>
                 <h3>⏱ Focus Session</h3>
 
@@ -356,10 +388,9 @@ const latestMood = entries.length
                   {running ? "Pause" : "Start Focus"}
                 </button>
               </GlassCard>
-
-            {/* WRITE */}
-
-
+              )}
+              {false && (
+            /* WRITE */
              <GlassCard>
             <h3>🎯 Daily Goal</h3>
             <p>Complete your main task today</p>
@@ -371,11 +402,68 @@ const latestMood = entries.length
               {goalDone ? "✅ Completed" : "Mark as Done"}
             </button>
           </GlassCard>
-
-            <GlassCard>
+            )}
+            <GlassCard style={{ position: "relative", padding: 20}} >
               <h2>Daily Journal</h2>
+                <div style={{
+                    position: "absolute",
+                    top: 16,
+                    right: 16,
+                    display: "flex",
+                    gap: 8
+                  }}>
 
-              <div style={{ marginTop: 8, display: "flex", gap: 10 }}>
+                    {/* Focus Timer Glass */}
+                    <button
+                      onClick={() => setRunning(!running)}
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        borderRadius: 20,
+                        color: "#eaf6ff",
+                        cursor: "pointer",
+
+                        /* GLASS STYLE */
+                        background: "rgba(255,255,255,0.06)",
+                        backdropFilter: "blur(10px)",
+                        WebkitBackdropFilter: "blur(10px)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        boxShadow: "0 0 10px rgba(0,200,255,0.15)",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      ⏱ {Math.floor(timeLeft / 60)}:
+                      {String(timeLeft % 60).padStart(2, "0")}
+                    </button>
+
+
+                    {/* Goal Glass */}
+                    <button
+                      onClick={() => setGoalDone(!goalDone)}
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        borderRadius: 20,
+                        color: "#eaf6ff",
+                        cursor: "pointer",
+
+                        /* GLASS STYLE */
+                        background: goalDone
+                          ? "rgba(0,255,170,0.15)"
+                          : "rgba(255,255,255,0.06)",
+                        backdropFilter: "blur(10px)",
+                        WebkitBackdropFilter: "blur(10px)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        boxShadow: goalDone
+                          ? "0 0 12px rgba(0,255,170,0.4)"
+                          : "0 0 10px rgba(0,200,255,0.15)",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      🎯 {goalDone ? "Done" : "Goal"}
+                    </button>
+
+                  </div>
 
                           {/* GOOD */}
                           <button
@@ -448,21 +536,45 @@ const latestMood = entries.length
                             😔 Low
                           </button>
 
-                      </div>
+                        {/* -------- Writing Prompt -------- */}
+          <div className="journal-prompt" style={{ marginTop: 12, marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span className="label">Writing Prompt</span>
+
+              <button
+                className="glass-btn small"
+                onClick={refreshPrompt}
+              >
+                🔄
+              </button>
+            </div>
+
+            <p className="prompt-text">{currentPrompt}</p>
+
+            <button
+              className="glass-btn"
+              onClick={insertPrompt}
+            >
+              Use this prompt
+            </button>
+          </div>
+
               <textarea
                 value={journal}
                 onChange={e => setJournal(e.target.value)}
                 placeholder="Write your thoughts..."
                 style={{
-                  width: "100%",
-                  height: 140,
-                  marginTop: 16,   
-                  borderRadius: 12,
-                  padding: 12,
-                  border: "none",
-                  outline: "none"
-                  }}
-                />
+                   width: "100%",
+                    height: 120,
+                    marginTop: 10,
+                    borderRadius: 14,
+                    padding: 14,
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    outline: "none",
+                    background: "rgba(255,255,255,0.03)",
+                    color: "#eaf6ff"
+                    }}
+                    />
               <button
                 className="glass-btn"
                 style={{ width: "100%", marginTop: 10 }}
@@ -473,7 +585,7 @@ const latestMood = entries.length
             </GlassCard>
 
             {/* SAVED */}
-            <GlassCard>
+            <GlassCard style={{ maxHeight: 520, overflowY: "auto" }}>
               <h3>📜 Journal Timeline</h3>
                     <p className="label">Your emotional and mental journey</p>
 
@@ -507,10 +619,10 @@ const latestMood = entries.length
                     </div>
 
             </GlassCard>
-            <GlassCard>
-                <StreakHeatmap entries={entries} />
+            <GlassCard style={{ padding: 14 }}>
+              <h4 style={{ marginBottom: 6 }}>📅 Consistency</h4>
+              <StreakHeatmap entries={entries} />
             </GlassCard>
-
           </div>
         )}
 
