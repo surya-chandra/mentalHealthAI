@@ -1,17 +1,27 @@
+import re
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+from google import genai
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import bcrypt
 import json
 import os
-import re
+
 from datetime import datetime, timedelta
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
 CORS(app)
 
 app.config["JWT_SECRET_KEY"] = "super-secret-key"
 jwt = JWTManager(app)
+
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+
+CHAT_MEMORY = {}
 
 USER_DB = "users.json"
 JOURNAL_DB = "journal.json"
@@ -252,6 +262,84 @@ def get_streak():
 
 
 # ---------------- RUN ----------------
+# ---------------- AI CHAT ----------------
+
+@app.route("/api/ai/chat", methods=["POST"])
+@jwt_required(optional=True)
+def ai_chat():
+    data = request.json
+    message = data.get("message", "")
+    mood = data.get("mood", "neutral")
+    streak = data.get("streak", 0)
+
+    if not message.strip():
+        return jsonify({"error": "Message cannot be empty"}), 400
+    # Get latest journal entry for this user (if logged in)
+    latest_entry = ""
+    user = None
+
+    try:
+        user = get_jwt_identity()
+    except:
+        user = None
+
+    if user:
+        entries = load_journal()
+        user_entries = [e for e in entries if e["user"] == user]
+
+        if user_entries:
+            latest_entry = user_entries[-1]["text"]
+    # Initialize chat memory for user
+    # Use user identity if logged in, otherwise use temporary session key
+    memory_key = user if user else "guest"
+
+    if memory_key not in CHAT_MEMORY:
+        CHAT_MEMORY[memory_key] = []
+
+    CHAT_MEMORY[memory_key].append({
+        "role": "user",
+        "content": message
+    })    
+    
+    prompt = f"""
+    You are MindAI, a calm, emotionally intelligent mental clarity coach.
+
+    Rules:
+    - Be warm but not overly dramatic.
+    - Give 1–3 small actionable steps.
+    - Encourage streak consistency.
+    - Do NOT give medical advice.
+    - Keep response under 120 words.
+
+    User mood: {mood}
+    Current streak: {streak} days
+    Latest journal entry:
+    {latest_entry}
+    User message: {message}
+    """
+
+    try:
+        conversation = prompt + "\n\n"
+        for msg in CHAT_MEMORY[memory_key]:
+            conversation += f"{msg['role']}: {msg['content']}\n"
+
+        response = client.models.generate_content(
+            model="models/gemini-2.5-flash",
+            contents=conversation
+        )
+
+        reply = response.text
+
+        CHAT_MEMORY[memory_key].append({
+            "role": "assistant",
+            "content": reply
+        })
+        CHAT_MEMORY[memory_key] = CHAT_MEMORY[memory_key][-6:]
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        print("Gemini Error:", e)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
